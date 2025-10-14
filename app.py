@@ -1,9 +1,11 @@
 import streamlit as st
 import pandas as pd
 import joblib   
+import gzip
+import pickle
 
-# Load model
-model = joblib.load("churn_model.pkl")
+with gzip.open("churn_model.pkl", "rb") as f:
+    model = pickle.load(f)
 
 st.title("📊 Customer Churn Prediction Dashboard")
 st.write("Analyze and predict customer churn using machine-learning insights.")
