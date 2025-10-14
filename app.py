@@ -1,9 +1,9 @@
 import streamlit as st
 import pandas as pd
-import pickle
+import joblib   
 
-# Load trained model
-model = pickle.load(open("churn_model.pkl", "rb"))
+# Load model
+model = joblib.load("churn_model.pkl")
 
 st.title("📊 Customer Churn Prediction Dashboard")
 st.write("Analyze and predict customer churn using machine-learning insights.")
