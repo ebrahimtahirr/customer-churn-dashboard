@@ -1,47 +1,62 @@
 import streamlit as st
 import pandas as pd
-import joblib   
-import gzip
 import pickle
+import warnings
+warnings.filterwarnings("ignore")
 
-with gzip.open("churn_model.pkl", "rb") as f:
-    model = pickle.load(f)
+st.set_page_config(page_title="Customer Churn Dashboard", layout="wide")
 
 st.title("📊 Customer Churn Prediction Dashboard")
 st.write("Analyze and predict customer churn using machine-learning insights.")
 
+# -------------------------------------------------------
+# Cache model so it loads once
+# -------------------------------------------------------
+@st.cache_resource
+def load_model():
+    with open("churn_model.pkl", "rb") as f:
+        return pickle.load(f)
+
+model = load_model()
+
+# -------------------------------------------------------
 # Sidebar inputs
+# -------------------------------------------------------
 st.sidebar.header("Enter Customer Information")
+
 tenure = st.sidebar.slider("Tenure (months)", 0, 72, 12)
 monthly = st.sidebar.number_input("Monthly Charges ($)", 0.0, 150.0, 70.0)
-total = st.sidebar.number_input("Total Charges ($)", 0.0, 9000.0, 1500.0)
-contract = st.sidebar.selectbox("Contract Type", ["Month-to-month","One year","Two year"])
-payment = st.sidebar.selectbox("Payment Method", ["Electronic check","Mailed check","Bank transfer (automatic)","Credit card (automatic)"])
-internet = st.sidebar.selectbox("Internet Service", ["DSL","Fiber optic","No"])
+total = st.sidebar.number_input("Total Charges ($)", 0.0, 10000.0, 1000.0)
+senior = st.sidebar.selectbox("Senior Citizen", ["No", "Yes"])
+partner = st.sidebar.selectbox("Has Partner", ["No", "Yes"])
+dependents = st.sidebar.selectbox("Has Dependents", ["No", "Yes"])
 
-# Build input row
-input_df = pd.DataFrame({
-    'tenure': [tenure],
-    'MonthlyCharges': [monthly],
-    'TotalCharges': [total],
-    'Contract_One year': [1 if contract=="One year" else 0],
-    'Contract_Two year': [1 if contract=="Two year" else 0],
-    'PaymentMethod_Electronic check': [1 if payment=="Electronic check" else 0],
-    'InternetService_Fiber optic': [1 if internet=="Fiber optic" else 0],
-    'InternetService_No': [1 if internet=="No" else 0],
-})
+# Encode categorical values like training
+senior_val = 1 if senior == "Yes" else 0
+partner_val = 1 if partner == "Yes" else 0
+dependents_val = 1 if dependents == "Yes" else 0
 
-# Align columns with model training set
-for col in model.feature_names_in_:
-    if col not in input_df.columns:
-        input_df[col] = 0
-input_df = input_df[model.feature_names_in_]
+# -------------------------------------------------------
+# Prediction
+# -------------------------------------------------------
+if st.button("🔮 Predict Churn"):
+    X_input = pd.DataFrame([{
+        'SeniorCitizen': senior_val,
+        'tenure': tenure,
+        'MonthlyCharges': monthly,
+        'TotalCharges': total,
+        'Partner_Yes': partner_val,
+        'Dependents_Yes': dependents_val
+    }])
 
-# Predict
-if st.sidebar.button("Predict Churn"):
-    pred = model.predict(input_df)[0]
-    prob = model.predict_proba(input_df)[0][1]
+    pred = model.predict(X_input)[0]
+    prob = model.predict_proba(X_input)[0][1]
+
+    st.subheader("📈 Prediction Result")
     if pred == 1:
-        st.error(f"⚠️ High Risk of Churn ({prob*100:.1f}% probability)")
+        st.error(f"⚠️ High Risk of Churn (Probability: {prob:.2f})")
     else:
-        st.success(f"✅ Low Risk of Churn ({prob*100:.1f}% probability)")
+        st.success(f"✅ Low Risk of Churn (Probability: {prob:.2f})")
+
+st.sidebar.markdown("---")
+st.sidebar.info("Built with Streamlit + Logistic Regression model")
